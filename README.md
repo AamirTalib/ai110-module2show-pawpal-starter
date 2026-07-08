@@ -66,8 +66,9 @@ pytest --cov
 Sample test output:
 
 ```
-# Paste your pytest output here
-```
+tests/test_pawpal.py ..............                                                [100%]
+
+=================================== 14 passed in 0.01s ===================================
 
 ## 📐 Smarter Scheduling
 
@@ -75,19 +76,24 @@ Sample test output:
 
 | Feature | Method(s) | Notes |
 |---------|-----------|-------|
-| Task sorting | | e.g., by priority, duration |
-| Filtering | | e.g., skip tasks if time runs out |
-| Conflict handling | | e.g., overlapping time slots |
-| Recurring tasks | | e.g., daily vs. weekly |
+
+| Task sorting | Scheduler.sort_tasks(), Scheduler.generate_daily_schedule() | Sorts tasks by scheduled time. Unscheduled tasks go last, and higher-priority tasks come first when times match.|
+
+| Filtering | Scheduler.filter_by_status(), Scheduler.filter_by_pet() | Filters tasks by completion status or by pet name.|
+
+| Conflict handling | Scheduler.detect_conflicts() | Detects tasks scheduled at the exact same time and returns readable warning messages.|
+
+| Recurring tasks | Task.is_recurring(), recurring task method in Scheduler | Handles daily or weekly tasks by creating the next occurrence using date logic.|
 
 ## 📸 Demo Walkthrough
 
 Describe your app in numbered steps so a reader can follow along without watching a video:
 
-1. <!-- Describe this step -->
-2. <!-- Describe this step -->
-3. <!-- Describe this step -->
-4. <!-- Describe this step -->
-5. <!-- Add more steps as needed -->
+1. The user enters basic owner information in the Streamlit app.
+2. The user adds one or more pets with details like name, breed, age, dietary and or medical needs. 
+3. The user adds care tasks for each pet such as: task name, category, duration, priority, scheduled time, and recurrence.
+4. When the user clicks the schedule button, the app uses the backend Scheduler to organize tasks by time and priority.
+5. The UI displays the generated schedule and shows warnings if two tasks are scheduled at the same time.
+6. The CLI demo in main.py also shows the scheduler working outside of Streamlit, including sorting, filtering, recurring tasks, and conflict detection.
 
-**Screenshot or video** *(optional)*: <!-- Insert a screenshot or link to a demo video here -->
+

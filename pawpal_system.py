@@ -1,13 +1,29 @@
 """PawPal+ backend system.
 
-This module defines the core data model and scheduling skeleton for PawPal+.
-It is translated directly from the UML draft in diagrams/uml_draft.mmd.
+This module defines the core data model and scheduling logic for PawPal+.
+It is translated from the UML draft in diagrams/uml_draft.mmd.
 
-NOTE: This is a Phase 1 skeleton. Method bodies are intentionally left as
-stubs (`pass` or simple returns) and will be implemented in later phases.
+The four main classes are Owner, Pet, Task, and Scheduler.
 """
 
 from dataclasses import dataclass, field
+from enum import IntEnum
+
+
+class Priority(IntEnum):
+    """Task priority. Higher value = more important, so it sorts naturally."""
+
+    LOW = 1
+    MEDIUM = 2
+    HIGH = 3
+
+
+def format_time(minutes: int | None) -> str:
+    """Turn minutes-since-midnight into a readable 'HH:MM' string."""
+    if minutes is None:
+        return "unscheduled"
+    hours, mins = divmod(minutes, 60)
+    return f"{hours:02d}:{mins:02d}"
 
 
 @dataclass
@@ -17,22 +33,25 @@ class Task:
     title: str
     category: str
     duration_minutes: int
-    priority: str
-    scheduled_time: str = ""
+    priority: Priority = Priority.MEDIUM
+    # Minutes since midnight (e.g. 8:00 AM -> 480). None means "not yet placed".
+    # Storing an int lets the scheduler compare times and compute end times
+    # (end = scheduled_time + duration_minutes).
+    scheduled_time: int | None = None
     recurrence: str = "none"
     completed: bool = False
 
-    def schedule(self, time: str) -> None:
-        """Assign a scheduled time to this task."""
-        pass
+    def schedule(self, time: int) -> None:
+        """Assign a start time (minutes since midnight) to this task."""
+        self.scheduled_time = time
 
     def mark_complete(self) -> None:
         """Mark this task as completed."""
-        pass
+        self.completed = True
 
     def is_recurring(self) -> bool:
-        """Return True if this task repeats (daily, weekly, etc.)."""
-        pass
+        """Return True if this task repeats (recurrence is set and not 'none')."""
+        return self.recurrence not in ("", "none")
 
 
 @dataclass
@@ -47,16 +66,19 @@ class Pet:
     tasks: list[Task] = field(default_factory=list)
 
     def add_task(self, task: Task) -> None:
-        """Add a care task for this pet."""
-        pass
+        """Add a care task to this pet's task list."""
+        self.tasks.append(task)
 
     def view_tasks(self) -> list[Task]:
-        """Return the list of this pet's tasks."""
-        pass
+        """Return this pet's list of tasks."""
+        return self.tasks
 
     def update_info(self, info: dict) -> None:
-        """Update this pet's basic information."""
-        pass
+        """Update this pet's basic info from a dict of valid attributes."""
+        allowed = ("name", "breed", "age", "dietary_needs", "medical_notes")
+        for key, value in info.items():
+            if key in allowed:
+                setattr(self, key, value)
 
 
 @dataclass
@@ -69,16 +91,27 @@ class Owner:
     pets: list[Pet] = field(default_factory=list)
 
     def add_pet(self, pet: Pet) -> None:
-        """Register a new pet under this owner."""
-        pass
+        """Add a pet to this owner's pet list."""
+        self.pets.append(pet)
 
     def update_preferences(self, preferences: dict) -> None:
-        """Update the owner's scheduling preferences."""
-        pass
+        """Merge new values into the owner's preferences dictionary."""
+        self.preferences.update(preferences)
 
-    def view_schedule(self) -> None:
-        """Display the owner's schedule (to be defined in a later phase)."""
-        pass
+    def build_scheduler(self, date: str) -> "Scheduler":
+        """Create a Scheduler for `date`, loaded with all of this owner's tasks."""
+        # Tasks are passed by reference, so completing a task in the plan is
+        # reflected on the pet.
+        scheduler = Scheduler(date=date)
+        scheduler.load_from_owner(self)
+        return scheduler
+
+    def view_schedule(self) -> list[Task]:
+        """Return all tasks from all of this owner's pets."""
+        all_tasks: list[Task] = []
+        for pet in self.pets:
+            all_tasks.extend(pet.view_tasks())
+        return all_tasks
 
 
 @dataclass
@@ -89,18 +122,47 @@ class Scheduler:
     date: str = ""
     available_slots: list = field(default_factory=list)
 
-    def generate_daily_schedule(self) -> list[Task]:
-        """Produce an ordered daily plan based on constraints and priorities."""
-        pass
+    def add_tasks(self, tasks: list[Task]) -> None:
+        """Load tasks (by reference) that this scheduler should plan."""
+        self.tasks.extend(tasks)
+
+    def load_from_owner(self, owner: Owner) -> None:
+        """Retrieve all tasks from an owner's pets into this scheduler."""
+        self.add_tasks(owner.view_schedule())
 
     def sort_tasks(self) -> list[Task]:
-        """Sort tasks (e.g. by priority and duration)."""
-        pass
+        """Return tasks sorted by scheduled_time first, then priority (high first)."""
+        # Unscheduled tasks (scheduled_time is None) sort to the end.
+        # Negating priority puts HIGH before MEDIUM before LOW.
+        return sorted(
+            self.tasks,
+            key=lambda t: (
+                t.scheduled_time if t.scheduled_time is not None else float("inf"),
+                -t.priority,
+            ),
+        )
 
-    def detect_conflicts(self) -> list:
-        """Find overlapping or conflicting tasks in the schedule."""
-        pass
+    def generate_daily_schedule(self) -> list[Task]:
+        """Return the day's tasks in a clear, sorted order."""
+        return self.sort_tasks()
 
-    def handle_recurring_tasks(self) -> None:
-        """Expand recurring tasks into concrete scheduled instances."""
-        pass
+    def detect_conflicts(self) -> list[str]:
+        """Return messages for any tasks that share the same scheduled_time."""
+        conflicts: list[str] = []
+        seen: dict[int, Task] = {}
+        for task in self.tasks:
+            if task.scheduled_time is None:
+                continue
+            if task.scheduled_time in seen:
+                other = seen[task.scheduled_time]
+                conflicts.append(
+                    f"Conflict at {format_time(task.scheduled_time)}: "
+                    f"'{other.title}' and '{task.title}'"
+                )
+            else:
+                seen[task.scheduled_time] = task
+        return conflicts
+
+    def handle_recurring_tasks(self) -> list[Task]:
+        """Return the tasks that are recurring."""
+        return [task for task in self.tasks if task.is_recurring()]

@@ -1,4 +1,11 @@
 classDiagram
+    class Priority {
+        <<enumeration>>
+        LOW
+        MEDIUM
+        HIGH
+    }
+
     class Owner {
         +str name
         +str contact_info
@@ -6,6 +13,7 @@ classDiagram
         +list~Pet~ pets
         +add_pet(pet) void
         +update_preferences(preferences) void
+        +build_scheduler(date) Scheduler
         +view_schedule() void
     }
 
@@ -25,8 +33,8 @@ classDiagram
         +str title
         +str category
         +int duration_minutes
-        +str priority
-        +str scheduled_time
+        +Priority priority
+        +int scheduled_time
         +str recurrence
         +bool completed
         +schedule(time) void
@@ -38,6 +46,7 @@ classDiagram
         +list~Task~ tasks
         +str date
         +list available_slots
+        +add_tasks(tasks) void
         +generate_daily_schedule() list~Task~
         +sort_tasks() list~Task~
         +detect_conflicts() list
@@ -47,3 +56,5 @@ classDiagram
     Owner "1" --> "1..*" Pet : owns
     Pet "1" --> "0..*" Task : has
     Scheduler "1" --> "0..*" Task : manages
+    Owner ..> Scheduler : builds
+    Task ..> Priority : uses

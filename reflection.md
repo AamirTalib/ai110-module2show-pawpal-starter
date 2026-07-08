@@ -11,10 +11,23 @@ The user should be able to perfrom the following actions:
 - Briefly describe your initial UML design.
 - What classes did you include, and what responsibilities did you assign to each?
 
+My initial UML design includes 4 classes: Owner, Pet, Task, Scheduler. 
+The Owner class stroes information such as Name, contact info, pets 
+The Pet class stores information such as Breed, age, medical and dietary needs 
+The Task class stores information such as walk, feed, groom, give medicine 
+and Lastly The Scheduler class stores info such as recurring tasks, priotity, availability conflicts 
+
 **b. Design changes**
 
-- Did your design change during implementation?
+- Did your design change during implementation? 
+
+Yes my design did change during implementation 
+
 - If yes, describe at least one change and why you made it.
+
+1. Priority was a string with no sort order, it now has a 1,2, or 3 rating to signify priority. 
+2. Schedule time was a string and has now been changed to an int.
+3. Owner and Schedule were disconnected, they now have build_scheduler and add_tasks, which gather each pet's tasks by reference and hand them to the scheduler.
 
 ---
 

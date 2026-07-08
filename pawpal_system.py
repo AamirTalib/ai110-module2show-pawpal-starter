@@ -6,7 +6,8 @@ It is translated from the UML draft in diagrams/uml_draft.mmd.
 The four main classes are Owner, Pet, Task, and Scheduler.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
+from datetime import date, timedelta
 from enum import IntEnum
 
 
@@ -39,6 +40,7 @@ class Task:
     # (end = scheduled_time + duration_minutes).
     scheduled_time: int | None = None
     recurrence: str = "none"
+    due_date: date | None = None
     completed: bool = False
 
     def schedule(self, time: int) -> None:
@@ -52,6 +54,19 @@ class Task:
     def is_recurring(self) -> bool:
         """Return True if this task repeats (recurrence is set and not 'none')."""
         return self.recurrence not in ("", "none")
+
+    def next_occurrence(self) -> "Task | None":
+        """Return a fresh copy of this task on its next due date, or None."""
+        steps = {"daily": timedelta(days=1), "weekly": timedelta(days=7)}
+        step = steps.get(self.recurrence)
+        if step is None or self.due_date is None:
+            return None
+        return replace(self, due_date=self.due_date + step, completed=False)
+
+    def complete_and_reschedule(self) -> "Task | None":
+        """Mark this task complete and return its next occurrence (if recurring)."""
+        self.mark_complete()
+        return self.next_occurrence()
 
 
 @dataclass
@@ -145,6 +160,17 @@ class Scheduler:
     def generate_daily_schedule(self) -> list[Task]:
         """Return the day's tasks in a clear, sorted order."""
         return self.sort_tasks()
+
+    def filter_by_status(self, completed: bool) -> list[Task]:
+        """Return tasks matching the given completed status."""
+        return [task for task in self.tasks if task.completed == completed]
+
+    def filter_by_pet(self, owner: Owner, pet_name: str) -> list[Task]:
+        """Return the tasks belonging to the named pet, or [] if not found."""
+        for pet in owner.pets:
+            if pet.name == pet_name:
+                return pet.view_tasks()
+        return []
 
     def detect_conflicts(self) -> list[str]:
         """Return messages for any tasks that share the same scheduled_time."""

@@ -1,88 +1,146 @@
+import datetime
+
 import streamlit as st
 
+from pawpal_system import Owner, Pet, Task, Scheduler, Priority, format_time
+
 st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
+
+# Create the Owner once and keep it across Streamlit reruns.
+if "owner" not in st.session_state:
+    st.session_state.owner = Owner(name="", contact_info="")
+
+owner = st.session_state.owner
+
+# Map the UI's friendly priority labels to the backend Priority enum.
+PRIORITY_OPTIONS = {"low": Priority.LOW, "medium": Priority.MEDIUM, "high": Priority.HIGH}
 
 st.title("🐾 PawPal+")
 
 st.markdown(
     """
-Welcome to the PawPal+ starter app.
-
-This file is intentionally thin. It gives you a working Streamlit app so you can start quickly,
-but **it does not implement the project logic**. Your job is to design the system and build it.
-
-Use this app as your interactive demo once your backend classes/functions exist.
+Welcome to **PawPal+**, a pet care planning assistant. Enter your info, add a
+pet, give it care tasks, then generate a daily schedule.
 """
 )
 
-with st.expander("Scenario", expanded=True):
+with st.expander("Scenario", expanded=False):
     st.markdown(
         """
-**PawPal+** is a pet care planning assistant. It helps a pet owner plan care tasks
-for their pet(s) based on constraints like time, priority, and preferences.
-
-You will design and implement the scheduling logic and connect it to this Streamlit UI.
-"""
-    )
-
-with st.expander("What you need to build", expanded=True):
-    st.markdown(
-        """
-At minimum, your system should:
-- Represent pet care tasks (what needs to happen, how long it takes, priority)
-- Represent the pet and the owner (basic info and preferences)
-- Build a plan/schedule for a day that chooses and orders tasks based on constraints
-- Explain the plan (why each task was chosen and when it happens)
+**PawPal+** helps a pet owner plan care tasks for their pet(s) based on
+constraints like time and priority.
 """
     )
 
 st.divider()
 
-st.subheader("Quick Demo Inputs (UI only)")
-owner_name = st.text_input("Owner name", value="Jordan")
-pet_name = st.text_input("Pet name", value="Mochi")
-species = st.selectbox("Species", ["dog", "cat", "other"])
+# --- Owner info ------------------------------------------------------------
+st.subheader("Owner")
+owner.name = st.text_input("Owner name", value=owner.name or "Jordan")
+owner.contact_info = st.text_input("Contact info", value=owner.contact_info)
 
-st.markdown("### Tasks")
-st.caption("Add a few tasks. In your final version, these should feed into your scheduler.")
+st.divider()
 
-if "tasks" not in st.session_state:
-    st.session_state.tasks = []
-
+# --- Add a pet -------------------------------------------------------------
+st.subheader("Pets")
 col1, col2, col3 = st.columns(3)
 with col1:
-    task_title = st.text_input("Task title", value="Morning walk")
+    pet_name = st.text_input("Pet name", value="Mochi")
 with col2:
-    duration = st.number_input("Duration (minutes)", min_value=1, max_value=240, value=20)
+    pet_breed = st.text_input("Breed", value="")
 with col3:
-    priority = st.selectbox("Priority", ["low", "medium", "high"], index=2)
+    pet_age = st.number_input("Age", min_value=0, max_value=40, value=1)
 
-if st.button("Add task"):
-    st.session_state.tasks.append(
-        {"title": task_title, "duration_minutes": int(duration), "priority": priority}
-    )
+if st.button("Add pet"):
+    if pet_name.strip():
+        owner.add_pet(Pet(name=pet_name, breed=pet_breed, age=int(pet_age)))
+        st.success(f"Added pet: {pet_name}")
+    else:
+        st.warning("Please enter a pet name.")
 
-if st.session_state.tasks:
-    st.write("Current tasks:")
-    st.table(st.session_state.tasks)
+if owner.pets:
+    st.write("Current pets:", ", ".join(p.name for p in owner.pets))
 else:
-    st.info("No tasks yet. Add one above.")
+    st.info("No pets yet. Add one above.")
 
 st.divider()
 
+# --- Add tasks to a pet ----------------------------------------------------
+st.subheader("Tasks")
+
+if owner.pets:
+    pet_names = [p.name for p in owner.pets]
+    selected_name = st.selectbox("Add task to pet", pet_names)
+    selected_pet = owner.pets[pet_names.index(selected_name)]
+
+    col1, col2 = st.columns(2)
+    with col1:
+        task_title = st.text_input("Task title", value="Morning walk")
+    with col2:
+        task_category = st.text_input("Category", value="general")
+
+    col3, col4, col5 = st.columns(3)
+    with col3:
+        duration = st.number_input("Duration (minutes)", min_value=1, max_value=240, value=20)
+    with col4:
+        priority_label = st.selectbox("Priority", list(PRIORITY_OPTIONS.keys()), index=2)
+    with col5:
+        start_time = st.time_input("Start time", value=datetime.time(8, 0))
+
+    if st.button("Add task"):
+        task = Task(
+            title=task_title,
+            category=task_category,
+            duration_minutes=int(duration),
+            priority=PRIORITY_OPTIONS[priority_label],
+            scheduled_time=start_time.hour * 60 + start_time.minute,
+        )
+        selected_pet.add_task(task)
+        st.success(f"Added '{task_title}' to {selected_pet.name}")
+
+    # Show the selected pet's current tasks.
+    if selected_pet.tasks:
+        st.write(f"Tasks for {selected_pet.name}:")
+        st.table(
+            [
+                {
+                    "Time": format_time(t.scheduled_time),
+                    "Task": t.title,
+                    "Category": t.category,
+                    "Minutes": t.duration_minutes,
+                    "Priority": t.priority.name,
+                }
+                for t in selected_pet.tasks
+            ]
+        )
+    else:
+        st.info(f"No tasks yet for {selected_pet.name}.")
+else:
+    st.info("Add a pet first, then you can add tasks for it.")
+
+st.divider()
+
+# --- Generate schedule -----------------------------------------------------
 st.subheader("Build Schedule")
-st.caption("This button should call your scheduling logic once you implement it.")
+
+schedule_date = st.date_input("Schedule date", value=datetime.date.today())
 
 if st.button("Generate schedule"):
-    st.warning(
-        "Not implemented yet. Next step: create your scheduling logic (classes/functions) and call it here."
-    )
-    st.markdown(
-        """
-Suggested approach:
-1. Design your UML (draft).
-2. Create class stubs (no logic).
-3. Implement scheduling behavior.
-4. Connect your scheduler here and display results.
-"""
-    )
+    scheduler = owner.build_scheduler(str(schedule_date))
+    plan = scheduler.generate_daily_schedule()
+
+    if not plan:
+        st.warning("No tasks to schedule yet. Add some tasks above.")
+    else:
+        st.markdown(f"### Daily plan for {schedule_date}")
+        for task in plan:
+            st.write(
+                f"- **{format_time(task.scheduled_time)}** — {task.title} "
+                f"({task.duration_minutes} min) [priority: {task.priority.name.lower()}]"
+            )
+
+        conflicts = scheduler.detect_conflicts()
+        if conflicts:
+            st.warning("Scheduling conflicts found:")
+            for message in conflicts:
+                st.write(f"- {message}")

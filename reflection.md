@@ -1,6 +1,10 @@
 # PawPal+ Project Reflection
 
 ## 1. System Design
+The user should be able to perfrom the following actions: 
+- Enter their pets information as well as their own 
+- Genenate a pet care schedule/plan for the user to follow 
+- Have preferences for how they want their grooming schedule to be 
 
 **a. Initial design**
 

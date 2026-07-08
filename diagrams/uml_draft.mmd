@@ -1,0 +1,49 @@
+classDiagram
+    class Owner {
+        +str name
+        +str contact_info
+        +dict preferences
+        +list~Pet~ pets
+        +add_pet(pet) void
+        +update_preferences(preferences) void
+        +view_schedule() void
+    }
+
+    class Pet {
+        +str name
+        +str breed
+        +int age
+        +str dietary_needs
+        +str medical_notes
+        +list~Task~ tasks
+        +add_task(task) void
+        +view_tasks() list~Task~
+        +update_info(info) void
+    }
+
+    class Task {
+        +str title
+        +str category
+        +int duration_minutes
+        +str priority
+        +str scheduled_time
+        +str recurrence
+        +bool completed
+        +schedule(time) void
+        +mark_complete() void
+        +is_recurring() bool
+    }
+
+    class Scheduler {
+        +list~Task~ tasks
+        +str date
+        +list available_slots
+        +generate_daily_schedule() list~Task~
+        +sort_tasks() list~Task~
+        +detect_conflicts() list
+        +handle_recurring_tasks() void
+    }
+
+    Owner "1" --> "1..*" Pet : owns
+    Pet "1" --> "0..*" Task : has
+    Scheduler "1" --> "0..*" Task : manages

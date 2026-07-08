@@ -130,17 +130,27 @@ if st.button("Generate schedule"):
     plan = scheduler.generate_daily_schedule()
 
     if not plan:
-        st.warning("No tasks to schedule yet. Add some tasks above.")
+        st.warning("No tasks to schedule yet. Add a pet and some tasks above.")
     else:
         st.markdown(f"### Daily plan for {schedule_date}")
-        for task in plan:
-            st.write(
-                f"- **{format_time(task.scheduled_time)}** — {task.title} "
-                f"({task.duration_minutes} min) [priority: {task.priority.name.lower()}]"
-            )
+        # Sorted plan shown as a clean table (time first, then priority).
+        st.table(
+            [
+                {
+                    "Time": format_time(task.scheduled_time),
+                    "Task": task.title,
+                    "Duration (min)": task.duration_minutes,
+                    "Priority": task.priority.name.title(),
+                    "Status": "Done" if task.completed else "Pending",
+                }
+                for task in plan
+            ]
+        )
 
         conflicts = scheduler.detect_conflicts()
         if conflicts:
             st.warning("Scheduling conflicts found:")
             for message in conflicts:
                 st.write(f"- {message}")
+        else:
+            st.success("No scheduling conflicts. 🎉")
